@@ -3,7 +3,6 @@
 
 """
 Phil Adams http://philadams.net
-
 Python wrapper around the Habitica (http://habitica.com) API
 http://github.com/philadams/habitica
 """
@@ -48,6 +47,7 @@ class Habitica(object):
         if self.aspect:
             aspect_id = kwargs.pop('_id', None)
             direction = kwargs.pop('_direction', None)
+            moveto = kwargs.pop('_moveto', None)
             uri = '%s/%s' % (self.auth['url'],
                              API_URI_BASE)
             if aspect_id is not None:
@@ -67,6 +67,8 @@ class Habitica(object):
                                     self.aspect)
             if direction is not None:
                 uri = '%s/score/%s' % (uri, direction)
+            elif moveto is not None:
+                uri = '%s/move/to/%s' % (uri, moveto)
         else:
             uri = '%s/%s/%s' % (self.auth['url'],
                                 API_URI_BASE,

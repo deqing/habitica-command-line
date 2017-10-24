@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# chcp 65001
 
 """
 Idea was originally from:
   Phil Adams http://philadams.net
   http://github.com/philadams/habitica
-
 
 """
 
@@ -118,7 +118,7 @@ def update_quest_cache(configfile, **kwargs):
     return cache
 
 
-def get_task_ids(tids):
+def get_task_ids(tids, unique_and_sort=True):
     """
     handle task-id formats such as:
         habitica todos done 3
@@ -136,7 +136,10 @@ def get_task_ids(tids):
                 task_ids.extend(range(start, stop + 1))
             else:
                 task_ids.append(int(bit))
-    return [e - 1 for e in set(task_ids)]
+    if unique_and_sort:
+        return [e - 1 for e in set(task_ids)]
+    else:
+        return [e - 1 for e in task_ids]
 
 
 def updated_task_list(tasks, tids):
@@ -240,6 +243,7 @@ def cli():
       todos done <task-id>    Mark one or more todo <task-id> completed
       todos add <task>        Add todo with description <task>
       todos delete <task-id>  Delete one or more todo <task-id>
+      todos tob <task-ids>    Move todos to bottom
       cs                      List challenges
       cs listbroken           list broken(closed) challenges
       cs clean                Remove tasks of broken challenges
@@ -508,13 +512,25 @@ def cli():
         elif 'delete' in args['<args>']:
             tids = get_task_ids(args['<args>'][1:])
             for tid in tids:
+                # https://habitica.com/api/v3/tasks/:taskId
+                # e.g. curl -X "DELETE" https://habitica.com/api/v3/tasks/3d5d324d-a042-4d5f-872e-0553e228553e
                 hbt.user.tasks(_id=todos[tid]['id'],
                                _method='delete')
                 print('deleted todo \'%s\''
                       % todos[tid]['text'])
                 sleep(HABITICA_REQUEST_WAIT_TIME)
             todos = updated_task_list(todos, tids)
-        print_task_list(todos)
+        elif 'tob' in args['<args>']:
+            # https://habitica.com/api/v3/tasks/:taskId/move/to/:position
+            tids = get_task_ids(args['<args>'][1:], unique_and_sort=False)
+            real_ids = [todos[tid] for tid in tids]
+            for real_id in real_ids:
+                print('moving', real_id['text'], 'to bottom')
+                hbt.user.tasks(_id=real_id['id'], _method='post', _moveto='-1')
+                sleep(HABITICA_REQUEST_WAIT_TIME)
+
+        if 'tob' not in args['<args>']:
+            print_task_list(todos)
 
     # GET challenges
     elif args['<command>'] == 'cs':
