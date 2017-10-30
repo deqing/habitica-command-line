@@ -6,4 +6,5 @@ Added following functions:
 * List challenges
 * List broken(closed) challenges
 * Remove tasks of broken challenges
+* Move habits/dailies/todos to top / bottom / a specific position
 
