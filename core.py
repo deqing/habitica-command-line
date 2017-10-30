@@ -164,13 +164,19 @@ def cl_item_count(task):
         return 0
 
 
-def print_task_list(tasks):
+def print_task_list(tasks, note_first=False):
     for i, task in enumerate(tasks):
         completed = 'x' if task['completed'] else ' '
-        task_line = '[%s] %s %s <%s>' % (completed,
-                                    i + 1,
-                                    task['text'],
-                                    task['notes'])
+        if note_first:
+            task_line = '[{}] {} <{}> {}'.format(completed,
+                                                 i+1,
+                                                 task['notes'][:50],
+                                                 task['text'])
+        else:
+            task_line = '[%s] %s %s <%s>' % (completed,
+                                        i + 1,
+                                        task['text'],
+                                        task['notes'])
         checklist_available = cl_item_count(task) > 0
         if checklist_available:
             task_line += ' (%s/%s)' % (str(cl_done_count(task)),
@@ -236,14 +242,24 @@ def cli():
       habits                  List habit tasks
       habits up <task-id>     Up (+) habit <task-id>
       habits down <task-id>   Down (-) habit <task-id>
+      hb                      List habit with desc first and then title
+      hb top <task-id>        Move habit to top of the list
+      hb tob <task-id>        Move habit to bottom of the list
+      hb <task-id> to <pos>   Move habit to a position
       dailies                 List daily tasks
       dailies done            Mark daily <task-id> complete
       dailies undo            Mark daily <task-id> incomplete
+      dl                      List daily tasks with desc first and then title
+      dl top <task-id>        Move dailys to top of the list
+      dl tob <task-id>        Move dailys to bottom of the list
+      dl <task-id> to <pos>   Move daily to a position
       todos                   List todo tasks
       todos done <task-id>    Mark one or more todo <task-id> completed
       todos add <task>        Add todo with description <task>
       todos delete <task-id>  Delete one or more todo <task-id>
+      todos top <task-ids>    Move todos to top
       todos tob <task-ids>    Move todos to bottom
+      todos <task-id> to <pos> Move todo to a position
       cs                      List challenges
       cs listbroken           list broken(closed) challenges
       cs clean                Remove tasks of broken challenges
@@ -306,6 +322,17 @@ def cli():
             print('Tasks that have broken challenges:')
             for name in task_names:
                 print('> [{}]\t[{}]\t[{}]'.format(name[0], name[1], name[2]))
+
+    def move(cmd_args, tasks, moveto, movefrom=None):
+        # https://habitica.com/api/v3/tasks/:taskId/move/to/:position
+        args_ids = cmd_args['<args>'][1:] if movefrom is None else [movefrom]
+        tids = get_task_ids(args_ids, unique_and_sort=False)
+        real_ids = [tasks[tid] for tid in tids]
+        for real_id in real_ids:
+            print('moving', real_id['text'], 'to',
+                  'top' if moveto == '0' else 'bottom' if moveto == '-1' else moveto)
+            hbt.user.tasks(_id=real_id['id'], _method='post', _moveto=moveto)
+            sleep(HABITICA_REQUEST_WAIT_TIME)
 
     # set up args
     args = docopt(cli.__doc__, version=VERSION)
@@ -465,6 +492,27 @@ def cli():
             score = qualitative_task_score_from_value(task['value'])
             print('[%s] %s %s' % (score, i + 1, task['text'].encode('utf8')))
 
+    # habits with notes
+    elif args['<command>'] == 'hb':
+        cache_file = 'habitica_cache.pkl'
+        if False:  # use cache ?
+            with open(cache_file, 'rb') as pkl:
+                habits = pickle.load(pkl)
+        else:
+            habits = hbt.user.tasks(type='habits')
+            with open(cache_file, 'wb') as pkl:
+                pickle.dump(habits, pkl)
+
+        if 'top' in args['<args>']:
+            move(args, habits, moveto='0')
+        elif 'tob' in args['<args>']:
+            move(args, habits, moveto='-1')
+        elif 'to' in args['<args>']:
+            move(args, habits, movefrom=args['<args>'][0], moveto=args['<args>'][2])
+        else:
+            for i, habit in enumerate(habits):
+                print('[{}] [{}] {}'.format(i+1, habit['notes'], habit['text']))
+
     # GET/PUT tasks:daily
     elif args['<command>'] == 'dailies':
         dailies = hbt.user.tasks(type='dailys')
@@ -487,6 +535,18 @@ def cli():
                 dailies[tid]['completed'] = False
                 sleep(HABITICA_REQUEST_WAIT_TIME)
         print_task_list(dailies)
+
+    # dailies with notes
+    elif args['<command>'] == 'dl':
+        dailies = hbt.user.tasks(type='dailys')
+        if 'top' in args['<args>']:
+            move(args, dailies, moveto='0')
+        elif 'tob' in args['<args>']:
+            move(args, dailies, moveto='-1')
+        elif 'to' in args['<args>']:
+            move(args, dailies, movefrom=args['<args>'][0], moveto=args['<args>'][2])
+        else:
+            print_task_list(dailies, note_first=True)
 
     # GET tasks:todo
     elif args['<command>'] == 'todos':
@@ -520,16 +580,14 @@ def cli():
                       % todos[tid]['text'])
                 sleep(HABITICA_REQUEST_WAIT_TIME)
             todos = updated_task_list(todos, tids)
-        elif 'tob' in args['<args>']:
-            # https://habitica.com/api/v3/tasks/:taskId/move/to/:position
-            tids = get_task_ids(args['<args>'][1:], unique_and_sort=False)
-            real_ids = [todos[tid] for tid in tids]
-            for real_id in real_ids:
-                print('moving', real_id['text'], 'to bottom')
-                hbt.user.tasks(_id=real_id['id'], _method='post', _moveto='-1')
-                sleep(HABITICA_REQUEST_WAIT_TIME)
 
-        if 'tob' not in args['<args>']:
+        if 'top' in args['<args>']:
+            move(args, todos, moveto='0')
+        elif 'tob' in args['<args>']:
+            move(args, todos, moveto='-1')
+        elif 'to' in args['<args>']:
+            move(args, todos, movefrom=args['<args>'][0], moveto=args['<args>'][2])
+        else:
             print_task_list(todos)
 
     # GET challenges
