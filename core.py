@@ -273,6 +273,8 @@ def cli():
 
     To show checklists with "todos" and "dailies" permanently, set
     'checklists' in your auth.cfg file to `checklists = true`.
+
+    Try `chcp 65001` when has char error.
     """
 
     def get_challenges(use_cache=False):  # cache is for quick debugging
@@ -317,7 +319,7 @@ def cli():
             print('There are no broken challenges')
         else:
             print('Broken challenges (already closed while have some tasks belong to them):')
-            for name in challenge_names:
+            for name in set(challenge_names):
                 print('> {}: [{}]'.format(name[0], name[1]))
             print('Tasks that have broken challenges:')
             for name in task_names:
