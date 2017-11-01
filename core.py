@@ -213,13 +213,19 @@ def set_checklists_status(auth, args):
 
 
 class Challenge:
-    def __init__(self, _id, _name, _short_name):
+    def __init__(self, _id, _name, _short_name, _guild_name):
         self.id = _id
         self.name = _name
         self.short_name = _short_name
+        self.guild_name = _guild_name
 
     def print(self):
-        print('Challenge: {}\n> ID: [{}]\n> Name: [{}]'.format(self.short_name, self.id, self.name))
+        print('Challenge: {}\n> ID: [{}]\n> Name: [{}]\n> Guild: [{}]'.format(
+            self.short_name,
+            self.id,
+            self.name,
+            self.guild_name
+        ))
 
 
 def cli():
@@ -283,7 +289,10 @@ def cli():
             with open(cache_file, 'rb') as pkl:
                 challenges = pickle.load(pkl)
         else:
-            challenges = [Challenge(c['_id'], c['name'], c['shortName']) for c in hbt.challenges.user()]
+            challenges = [Challenge(c['_id'],  # Get all challenges in the system (not only user's)
+                                    c['name'],
+                                    c['shortName'],
+                                    c['group']['name']) for c in hbt.challenges.user()]
             with open(cache_file, 'wb') as pkl:
                 pickle.dump(challenges, pkl)
         return challenges
