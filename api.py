@@ -48,6 +48,7 @@ class Habitica(object):
             aspect_id = kwargs.pop('_id', None)
             direction = kwargs.pop('_direction', None)
             moveto = kwargs.pop('_moveto', None)
+            tag = kwargs.pop('_tag', None)
             uri = '%s/%s' % (self.auth['url'],
                              API_URI_BASE)
             if aspect_id is not None:
@@ -69,6 +70,8 @@ class Habitica(object):
                 uri = '%s/score/%s' % (uri, direction)
             elif moveto is not None:
                 uri = '%s/move/to/%s' % (uri, moveto)
+            elif tag is not None:
+                uri = '%s/tags/%s' % (uri, tag)
         else:
             uri = '%s/%s/%s' % (self.auth['url'],
                                 API_URI_BASE,

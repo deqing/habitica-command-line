@@ -266,8 +266,9 @@ def cli():
       todos top <task-ids>    Move todos to top
       todos tob <task-ids>    Move todos to bottom
       todos <task-id> to <pos> Move todo to a position
+      todos tag <task-ids>    Add tag "serious" to tasks
       cs                      List challenges
-      cs listbroken           list broken(closed) challenges
+      cs lsbroken             list broken(closed) challenges
       cs clean                Remove tasks of broken challenges
       server                  Show status of Habitica service
       home                    Open tasks page in default browser
@@ -591,19 +592,32 @@ def cli():
                       % todos[tid]['text'])
                 sleep(HABITICA_REQUEST_WAIT_TIME)
             todos = updated_task_list(todos, tids)
+        print_task_list(todos)
 
+    elif args['<command>'] == 'td':  #'https://habitica.com/api/v3/tasks/:taskId/tags/:tagId'
+        todos = [e for e in hbt.user.tasks(type='todos')
+                 if not e['completed']]
         if 'top' in args['<args>']:
             move(args, todos, moveto='0')
         elif 'tob' in args['<args>']:
             move(args, todos, moveto='-1')
         elif 'to' in args['<args>']:
             move(args, todos, movefrom=args['<args>'][0], moveto=args['<args>'][2])
-        else:
-            print_task_list(todos)
+        elif 'tag' in args['<args>']:
+            tids = get_task_ids(args['<args>'][1:])
+            for tid in tids:
+                print('adding tag <serious> to todo [%s]' % todos[tid]['text'])
+                try:
+                    hbt.user.tasks(_id=todos[tid]['id'],
+                                   _method='post',
+                                   _tag='709ad718-453c-4504-b9ff-aa60f622bdd3')  # tag: 'serious'
+                except Exception as e:
+                    if 'The task is already tagged with given tag' not in e.response.text:
+                        raise e
 
     # GET challenges
     elif args['<command>'] == 'cs':
-        if 'listbroken' in args['<args>']:
+        if 'lsbroken' in args['<args>']:
             print_broken_challenges() #use_cache=True)
 
         # https://habitica.com/api/v3/tasks/unlink-one/757c831c-b4c6-4697-b6f9-ec30ee41e8e0?keep=remove
